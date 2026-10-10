@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Whack Attack!</title>
+<style>
+:root{--ink:#30204d;--pink:#ff4f9a;--yellow:#ffe66d;--blue:#75e5ff}
+*{box-sizing:border-box}
+body{margin:0;background:#f8f0ff;color:var(--ink);font-family:system-ui,sans-serif;min-height:100dvh;display:flex;justify-content:center;overflow-x:hidden;touch-action:pan-y}
+button,input{font:inherit}
+button{cursor:pointer;border:0;touch-action:manipulation}
+.app{width:100%;max-width:480px;min-height:100dvh;padding:22px 20px 28px;background:linear-gradient(160deg,#fff8c9,#ffd9ed 55%,#d9f8ff);display:flex;flex-direction:column;position:relative;overflow:hidden}
+header{text-align:center;position:relative;z-index:1}
+.logo{font-size:3.4rem;line-height:1}
+h1{font-size:clamp(2.2rem,10vw,3.5rem);line-height:1;margin:10px 0;color:#7138c9;letter-spacing:-2px;text-shadow:3px 4px 0 #fff}
+h1 span{color:#ff438b}
+.subtitle{font-weight:700;color:#775e91}
+.panel{margin:auto 0;position:relative;z-index:1}
+.card{background:#ffffffd9;border:3px solid white;border-radius:28px;padding:24px 20px;box-shadow:0 10px 0 #d6b9ec;text-align:center}
+.card h2{margin:0 0 10px;font-size:1.8rem}
+.name{width:100%;padding:15px;border:3px solid #e1c8ff;border-radius:15px;margin:12px 0 18px;outline:none;background:white;color:var(--ink)}
+.name:focus{border-color:#8b48e8}
+.primary{width:100%;padding:17px;border-radius:18px;background:#773be0;color:white;font-size:1.2rem;font-weight:900;box-shadow:0 6px 0 #4c239a;transition:transform .12s}
+.primary:active{transform:translateY(4px);box-shadow:0 2px 0 #4c239a}
+.small{font-size:.9rem;color:#755d8c;line-height:1.5}
+#game{display:none}
+.hud{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 18px}
+.stat{background:white;border:2px solid #eddfff;border-radius:16px;text-align:center;padding:10px 3px;min-width:0}
+.stat small{display:block;font-weight:800;font-size:.72rem;color:#8a70a6}
+.stat strong{font-size:1.35rem;white-space:nowrap}
+#board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;touch-action:none;user-select:none}
+.hole{aspect-ratio:1;border-radius:50%;background:radial-gradient(ellipse at center,#6c438f 0 48%,#42245f 51% 68%,#b28ad6 70%);position:relative;display:grid;place-items:center;overflow:hidden;box-shadow:inset 0 7px 8px #29163f66;cursor:pointer}
+.mole{font-size:clamp(2.5rem,12vw,4rem);position:absolute;transform:translateY(110%) scale(.65);transition:transform .13s ease-out;pointer-events:none;filter:drop-shadow(0 3px 1px #321b4666)}
+.hole.up .mole{transform:translateY(-4%) scale(1)}
+.hole.hit .mole{transform:translateY(-100%) scale(.5);transition:transform .18s}
+.hole.up:active{filter:brightness(1.2)}
+#feedback{height:30px;text-align:center;font-weight:900;font-size:1.1rem;color:#773be0;margin:12px 0 0}
+#playerLine{text-align:center;font-weight:900;font-size:1.1rem}
+#progress{height:9px;background:#ead8fb;border-radius:9px;overflow:hidden;margin-top:8px}
+#bar{height:100%;width:100%;background:linear-gradient(90deg,#5bd8c0,#ffe66d,#ff528e);transition:width .2s linear}
+#gameover{display:none}
+#finalScore{font-size:4rem;color:#773be0;font-weight:1000;line-height:1.2}
+footer{margin-top:auto;padding-top:20px;text-align:center;color:#8a70a6;font-size:.8rem;font-weight:700}
+.spark{position:absolute;pointer-events:none;font-size:1.4rem;animation:pop .55s ease-out forwards;z-index:4}
+@keyframes pop{to{transform:translateY(-50px) scale(1.6);opacity:0}}
+@keyframes wiggle{25%{transform:rotate(-9deg)}75%{transform:rotate(9deg)}}
+.shake{animation:wiggle .2s}
+@media(min-height:800px){.app{padding-top:34px}.panel{margin-top:auto;margin-bottom:auto}#board{gap:16px}}
+</style>
+</head>
+<body>
+<main class="app">
+<header>
+<div class="logo">🔨✨</div>
+<h1>WHACK <span>ATTACK!</span></h1>
+<div class="subtitle">Tiny moles. BIG trouble.</div>
+</header>
+
+<section class="panel" id="home">
+<div class="card">
+<h2>Ready, whacker? 😎</h2>
+<p>Catch as many cheeky moles as you can in <b>30 seconds!</b></p>
+<label for="playerName"><b>What's your name?</b></label>
+<input class="name" id="playerName" maxlength="16" placeholder="Enter your first name" autocomplete="given-name">
+<button class="primary" id="play">LET'S WHACK! 🚀</button>
+<p class="small">⭐ Your best score: <b id="homeBest">0</b><br>Tap, click, or swipe across the moles!</p>
+</div>
+</section>
+
+<section class="panel" id="game">
+<div id="playerLine">Go get 'em!</div>
+<div class="hud">
+<div class="stat"><small>SCORE</small><strong id="score">0</strong></div>
+<div class="stat"><small>TIME</small><strong id="time">30</strong></div>
+<div class="stat"><small>BEST 🏆</small><strong id="best">0</strong></div>
+</div>
+<div id="board" aria-label="Whack-a-mole game board"></div>
+<div id="progress"><div id="bar"></div></div>
+<div id="feedback" aria-live="polite">Catch them if you can!</div>
+<p class="small" style="text-align:center">Keyboard: press 1–9 to whack a hole.</p>
+</section>
+
+<section class="panel" id="gameover">
+<div class="card">
+<div style="font-size:4rem">🏆🎉</div>
+<h2 id="endTitle">Great whacking!</h2>
+<p class="small">You scored</p>
+<div id="finalScore">0</div>
+<p id="resultText">Amazing job!</p>
+<p>Personal best: <b id="endBest">0</b></p>
+<button class="primary" id="again">PLAY AGAIN 🔥</button>
+<button id="homeBtn" style="background:none;color:#773be0;padding:18px;font-weight:800">Back to title</button>
+</div>
+</section>
+
+<footer>MADE FOR MISCHIEF 💜 • NO MOLE LEFT BEHIND</footer>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const board=$('board');
+const faces=['🐹','🐻','🐸','🐵','🐰','🦊','🐼','🐱','🐨'];
+let name='Player',score=0,best=0,time=30,running=false;
+let started=0,lastSpawn=0,raf=0,spawnTimer=null,visible=new Set();
+let audio=null,dragging=false,lastHole=-1;
+try{best=Number(localStorage.getItem('whackBest'))||0}catch(e){}
+$('homeBest').textContent=best;
+$('best').textContent=best;
+
+for(let i=0;i<9;i++){
+ const hole=document.createElement('button');
+ hole.className='hole';hole.dataset.i=i;
+ hole.setAttribute('aria-label','Hole '+(i+1));
+ hole.innerHTML='<span class="mole">🐹</span>';
+ board.appendChild(hole);
+}
+
+function sound(freq=440,duration=.09,type='sine'){
+ try{
+  if(!audio)audio=new(window.AudioContext||window.webkitAudioContext)();
+  if(audio.state==='suspended')audio.resume();
+  const o=audio.createOscillator(),g=audio.createGain();
+  o.type=type;o.frequency.setValueAtTime(freq,audio.currentTime);
+  o.frequency.exponentialRampToValueAtTime(Math.max(70,freq*.65),audio.currentTime+duration);
+  g.gain.setValueAtTime(.12,audio.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);
+  o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+duration);
+ }catch(e){}
+}
+function show(id){
+ ['home','game','gameover'].forEach(x=>$(x).style.display=x===id?'block':'none');
+}
+function start(){
+ name=$('playerName').value.trim().slice(0,16)||'Player';
+ score=0;time=30;running=true;visible.clear();
+ $('score').textContent=0;$('time').textContent=30;
+ $('best').textContent=best;$('feedback').textContent='Catch them if you can!';
+ $('playerLine').textContent='Go get \'em, '+name+'! 💪';
+ document.querySelectorAll('.hole').forEach(h=>{h.classList.remove('up','hit');h.querySelector('.mole').textContent='🐹'});
+ show('game');sound(550,.13);
+ started=performance.now();lastSpawn=started;
+ spawn();cancelAnimationFrame(raf);raf=requestAnimationFrame(tick);
+}
+function spawn(){
+ if(!running)return;
+ const elapsed=(performance.now()-started)/1000;
+ const count=Math.min(3,1+Math.floor(elapsed/9));
+ for(let j=0;j<count;j++){
+  const free=[...Array(9).keys()].filter(i=>!visible.has(i));
+  if(!free.length)break;
+  const i=free[Math.floor(Math.random()*free.length)];
+  visible.add(i);
+  const h=board.children[i];
+  h.classList.remove('hit');h.querySelector('.mole').textContent=faces[Math.floor(Math.random()*faces.length)];
+  h.classList.add('up');
+  const duration=Math.max(430,1050-elapsed*18);
+  setTimeout(()=>hide(i),duration);
+ }
+ const delay=Math.max(300,850-elapsed*12);
+ spawnTimer=setTimeout(spawn,delay);
+}
+function hide(i){
+ visible.delete(i);
+ const h=board.children[i];
+ h.classList.remove('up','hit');
+}
+function hit(i){
+ if(!running||!visible.has(i))return;
+ visible.delete(i);
+ const h=board.children[i];
+ h.classList.remove('up');h.classList.add('hit');
+ score+=10; $('score').textContent=score;
+ $('feedback').textContent=['NICE! 💥','WHACK! ⭐','GOTCHA! 🎯','BOOM! 💫'][Math.floor(Math.random()*4)];
+ sound(330+Math.random()*500,.08,'square');
+ const r=h.getBoundingClientRect(),spark=document.createElement('span');
+ spark.className='spark';spark.textContent=['✨','💥','⭐','+10'][Math.floor(Math.random()*4)];
+ spark.style.left=(r.left+r.width/2-10)+'px';spark.style.top=(r.top+r.height/2)+'px';
+ document.body.appendChild(spark);setTimeout(()=>spark.remove(),600);
+ setTimeout(()=>h.classList.remove('hit'),200);
+}
+function tick(now){
+ if(!running)return;
+ const elapsed=(now-started)/1000;
+ time=Math.max(0,30-elapsed);
+ $('time').textContent=Math.ceil(time);
+ $('bar').style.width=(time/30*100)+'%';
+ if(time<=0){finish();return}
+ raf=requestAnimationFrame(tick);
+}
+function finish(){
+ running=false;clearTimeout(spawnTimer);cancelAnimationFrame(raf);
+ visible.clear();
+ document.querySelectorAll('.hole').forEach(h=>h.classList.remove('up','hit'));
+ sound(220,.3,'triangle');
+ if(score>best){best=score;try{localStorage.setItem('whackBest',best)}catch(e){}}
+ $('homeBest').textContent=best;$('best').textContent=best;
+ $('finalScore').textContent=score;$('endBest').textContent=best;
+ $('endTitle').textContent=score>=100?'MOLE-SLAYER! 🥇':'Great whacking, '+name+'!';
+ $('resultText').textContent=score>=best&&score>0?'A new personal best! You rock!':'You caught '+score/10+' moles. Fancy another round?';
+ show('gameover');
+}
+board.addEventListener('pointerdown',e=>{
+ const h=e.target.closest('.hole');
+ if(h){dragging=true;lastHole=+h.dataset.i;hit(lastHole);e.preventDefault()}
+});
+board.addEventListener('pointermove',e=>{
+ if(!dragging)return;
+ const el=document.elementFromPoint(e.clientX,e.clientY);
+ const h=el&&el.closest('.hole');
+ if(h&&board.contains(h)&&+h.dataset.i!==lastHole){
+  lastHole=+h.dataset.i;hit(lastHole);
+ }
+});
+window.addEventListener('pointerup',()=>{dragging=false;lastHole=-1});
+window.addEventListener('keydown',e=>{
+ if(!running)return;
+ const n=Number(e.key);
+ if(n>=1&&n<=9)hit(n-1);
+});
+$('play').addEventListener('click',start);
+$('again').addEventListener('click',start);
+$('homeBtn').addEventListener('click',()=>show('home'));
+$('playerName').addEventListener('keydown',e=>{if(e.key==='Enter')start()});
+</script>
+</body>
+</html>
